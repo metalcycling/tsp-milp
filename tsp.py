@@ -4,13 +4,22 @@ import itertools
 import networkx as nx
 import numpy as np
 import scipy as sp
+import numpy.linalg as npla
 import matplotlib.pyplot as plt
 
 from scipy.optimize import milp, LinearConstraint, Bounds
 
+# %% Read input data
+
+path = "data/p1"
+
+tsp = {}
+tsp["locations"] = np.loadtxt("%s/locations.dat" % (path))
+tsp["distances"] = np.loadtxt("%s/distances.dat" % (path))
+
 # %% Problem parameters
 
-num_nodes = 8
+num_nodes = tsp["locations"].shape[0]
 nodes = [node for node in range(1, num_nodes + 1)]
 
 edges = list(itertools.permutations(nodes, 2))
@@ -34,14 +43,7 @@ for node in nodes[1:]:
 
 # %% Cost
 
-distances = np.ones((num_nodes, num_nodes), dtype = float)
-np.fill_diagonal(distances, 0.0)
-
-distances[0, 1] = 10.0
-distances[1, 2] = 10.0
-distances[3, 4] = 10.0
-distances[2, 3] = 10.0
-distances[0, 4] = 10.0
+distances = tsp["distances"]
 
 # %% Edges without first nodes
 
@@ -103,53 +105,32 @@ integrality = np.ones_like(objective_coefficiens)
 solution = milp(c = objective_coefficiens, constraints = constraints, integrality = integrality, bounds = bounds)
 path = solution.x
 
-# %%
-
-
 # %% Visualize solution
 
 G = nx.DiGraph()
 G.add_nodes_from(nodes)
+pos = {}
 
-for edge in edges:
-    node_i = edge[0]
-    node_j = edge[1]
-
-    if distances[node_i - 1, node_j - 1] == 1.0:
-        G.add_edge(edge[0], edge[1])
-
-P = nx.DiGraph()
+for idx, node in enumerate(nodes):
+    pos[node] = tsp["locations"][idx]
 
 for idx in np.where(path[:num_edges])[0]:
     node_i = idx_to_var[idx][0]
     node_j = idx_to_var[idx][1]
 
-    P.add_edge(node_i, node_j)
-
-pos = nx.circular_layout(G)
+    G.add_edge(node_i, node_j)
 
 graph_options = {
-    "font_size": 36,
-    "node_size": 3000,
+    "font_size": 16,
+    "node_size": 1000,
     "edgecolors": "black",
     "edge_color": "lightgray",
-    "linewidths": 5,
-    "width": 5,
+    "linewidths": 4,
+    "width": 4,
 }
 
-path_options = {
-    "font_size": 36,
-    "node_size": 3000,
-    "node_color": "cornflowerblue",
-    "edgecolors": "black",
-    "edge_color": "red",
-    "linewidths": 5,
-    "width": 5,
-}
-
-plt.figure(figsize = (12, 8))
+plt.figure(figsize = (16, 12))
 nx.draw_networkx(G, pos = pos, **graph_options)
-nx.draw_networkx(P, pos = pos, **path_options)
 plt.axis("equal")
 plt.show()
 
